@@ -229,9 +229,9 @@ public class UDTReceiver {
 	 */
 	protected void receive(UDTPacket p)throws IOException{
 		if(storeStatistics)dgReceiveInterval.end();
-		if(!p.isControlPacket()){
-			System.out.println("++ "+p+" queuesize="+handoffQueue.size());
-		}
+		//if(!p.isControlPacket()){
+		//	System.out.println("++ "+p+" queuesize="+handoffQueue.size());
+		//}
 		handoffQueue.offer(p);
 		if(storeStatistics)dgReceiveInterval.begin();
 	}
@@ -259,8 +259,9 @@ public class UDTReceiver {
 			processEXPEvent();
 		}
 		//perform time-bounded UDP receive
+        //TODO 检查为什么没拿走
 		UDTPacket packet=handoffQueue.poll(Util.getSYNTime(), TimeUnit.MICROSECONDS);
-		if(packet!=null){
+        if(packet!=null){
 			//reset exp count to 1
 			expCount=1;
 			//If there is no unacknowledged data packet, or if this is an 
@@ -343,10 +344,12 @@ public class UDTReceiver {
 	 * process EXP event (see spec. p 13)
 	 */
 	protected void processEXPEvent()throws IOException{
+	    //TODO 检查socket alive在handshake后设置的active 状态
 		if(session.getSocket()==null || !session.getSocket().isActive())return;
 		UDTSender sender=session.getSocket().getSender();
 		//put all the unacknowledged packets in the senders loss list
 		sender.putUnacknowledgedPacketsIntoLossList();
+		//TODO 假如(exp-count>16)并且自上次从对方接收到一个包以来的总时间超过3秒，或这个时间已超过3分钟了，这被认为是连接已断开，关闭UDT连接。
 		if(expCount>16 && System.currentTimeMillis()-sessionUpSince > IDLE_TIMEOUT){
 			if(!connectionExpiryDisabled &&!stopped){
 				sendShutdown();

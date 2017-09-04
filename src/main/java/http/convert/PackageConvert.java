@@ -1,7 +1,7 @@
 package http.convert;
 
 import java.io.IOException;
-import java.lang.reflect.Type;
+import java.io.InputStream;
 import java.util.HashMap;
 
 import http.data.UDTMessage;
@@ -9,7 +9,6 @@ import http.data.UDTPackage;
 import http.data.UDTRequest;
 import http.data.UDTResponse;
 import http.utils.ByteReader;
-import udt.UDTInputStream;
 
 /**
  * @author lifeng
@@ -23,17 +22,15 @@ public class PackageConvert {
      * @throws IOException
      * @throws Exception
      */
-    public static UDTPackage getPackageFromStream(UDTInputStream in) throws Exception {
+    public static UDTPackage getPackageFromStream(InputStream in) throws Exception {
         UDTPackage packet = new UDTPackage();
 
-        long t1 = System.currentTimeMillis();
         ByteReader.read(packet.getVersion(),in);
         ByteReader.read(packet.getLength(),in);
         int length = ByteReader.byteToInt(packet.getLength());
         byte[] data = new byte[length];
         packet.setData(data);
 
-        t1 = System.currentTimeMillis();
         ByteReader.read(packet.getData(), in);
         return packet;
     }
@@ -58,9 +55,9 @@ public class PackageConvert {
      * @param
      * @return
      */
-    public static UDTResponse getResponseFromPackage(UDTPackage packet, Type type, String key) throws Exception {
+    public static UDTResponse getResponseFromPackage(UDTPackage packet, String key) throws Exception {
         UDTMessage message = ByteReader.byteToObject(packet.getData());
-        return MessageConvert.convertToUDTResponse(message, type, key);
+        return MessageConvert.convertToUDTResponse(message, key);
     }
 
     /**
@@ -71,9 +68,9 @@ public class PackageConvert {
      * @param
      * @return
      */
-    public static UDTRequest getRequestFromPackage(UDTPackage packet, Type type, String key) throws Exception {
+    public static UDTRequest getRequestFromPackage(UDTPackage packet, String key) throws Exception {
         UDTMessage message = ByteReader.byteToObject(packet.getData());
-        return MessageConvert.convertToUDTRequest(message, type, key);
+        return MessageConvert.convertToUDTRequest(message, key);
     }
 
     /**
@@ -110,14 +107,14 @@ public class PackageConvert {
         return genPackageFromByte(version, length, requestBytes);
     }
 
-    public static UDTRequest getRequestFromStream(UDTInputStream in, Type type, String key)
+    public static UDTRequest getRequestFromStream(InputStream in, String key)
         throws Exception {
-        return getRequestFromPackage(getPackageFromStream(in), type, key);
+        return getRequestFromPackage(getPackageFromStream(in), key);
     }
 
-    public static UDTResponse getResponseFromStream(UDTInputStream in, Type type, String key)
+    public static UDTResponse getResponseFromStream(InputStream in, String key)
         throws Exception {
-        return getResponseFromPackage(getPackageFromStream(in), type, key);
+        return getResponseFromPackage(getPackageFromStream(in), key);
     }
 
     public static UDTMessage getMessageFromPackage(UDTPackage packet)

@@ -1,6 +1,7 @@
 package http.data;
 
 import java.io.Serializable;
+import java.nio.ByteBuffer;
 
 /**
  * @author lifeng
@@ -42,7 +43,7 @@ public class UDTPackage implements Serializable {
         int lengthLength = this.getLength().length;
         int requestLength = this.getData().length;
         int totalLength = versionLength + lengthLength + requestLength;
-        byte[] data = new byte[totalLength];
+        byte[] data = ByteBuffer.allocate(totalLength).array();
         System.arraycopy(this.getVersion(), 0, data, 0, versionLength);
         System.arraycopy(this.getLength(), 0, data, versionLength, lengthLength);
         System.arraycopy(this.getData(), 0, data, versionLength + lengthLength, requestLength);

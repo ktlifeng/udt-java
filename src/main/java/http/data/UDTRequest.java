@@ -9,7 +9,7 @@ import java.util.HashMap;
 public class UDTRequest implements Serializable{
     protected int method;
     private HashMap<String,String> headers = new HashMap();
-    private String body;
+    private Object body;
 
     public HashMap<String, String> getHeaders() {
         return headers;
@@ -19,11 +19,11 @@ public class UDTRequest implements Serializable{
         this.headers = headers;
     }
 
-    public String getBody() {
+    public Object getBody() {
         return body;
     }
 
-    public void setBody(String body) {
+    public void setBody(Object body) {
         this.body = body;
     }
 

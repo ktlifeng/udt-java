@@ -3,19 +3,19 @@ package http.utils;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
 import http.data.UDTRequest;
 import http.exception.UDTEndStreamException;
-import udt.UDTInputStream;
 
 /**
  * @author lifeng
  */
 public class ByteReader {
 
-    public static void read(byte[] target, UDTInputStream in) throws IOException, UDTEndStreamException {
+    public static void read(byte[] target, InputStream in) throws IOException, UDTEndStreamException {
         int total = 0;
         while (total < target.length) {
             //int num = in.read(target);
@@ -117,7 +117,7 @@ public class ByteReader {
 
     public static void main(String[] args) throws Exception {
         UDTRequest request = new UDTRequest();
-        request.setBody("trsatgasdgasdg");
+        request.setBody("trsatgasdgasdg".getBytes());
         byte[] a = ByteReader.objectToByte(request);
         request = ByteReader.byteToObject(a);
         System.out.println(request.getBody());

@@ -77,7 +77,7 @@ public class NegativeAcknowledgement extends ControlPacket{
 			//set highest bit back to 0
 			buffer[0]=(byte)(buffer[0]&0x7f);
 			int lost=ByteBuffer.wrap(buffer).getInt();
-			if(isNotSingle){
+			if(isNotSingle && bb.remaining()>=4){
 				//get the end of the interval
 				int end=bb.getInt();
 				//and add all lost numbers to the result list

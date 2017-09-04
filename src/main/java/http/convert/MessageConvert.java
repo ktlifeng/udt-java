@@ -1,6 +1,5 @@
 package http.convert;
 
-import java.lang.reflect.Type;
 import java.util.HashMap;
 
 import http.data.UDTMessage;
@@ -30,12 +29,12 @@ public class MessageConvert {
         return message;
     }
 
-    public static UDTRequest convertToUDTRequest(UDTMessage message, Type type, String key) throws Exception {
+    public static UDTRequest convertToUDTRequest(UDTMessage message, String key) throws Exception {
         byte[] requestBytes = UDTSecretUtil.AESDecode(key, message.getBody());
         return ByteReader.byteToObject(requestBytes);
     }
 
-    public static UDTResponse convertToUDTResponse(UDTMessage message, Type type, String key) throws Exception {
+    public static UDTResponse convertToUDTResponse(UDTMessage message, String key) throws Exception {
         byte[] requestBytes = UDTSecretUtil.AESDecode(key, message.getBody());
         return ByteReader.byteToObject(requestBytes);
     }

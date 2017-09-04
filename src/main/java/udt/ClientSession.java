@@ -52,7 +52,7 @@ public class ClientSession extends UDTSession {
 
 	private UDPEndPoint endPoint;
 
-	long initialSequenceNo=SequenceNumber.random();
+	//long initialSequenceNo=SequenceNumber.random();
 	
 	public ClientSession(UDPEndPoint endPoint, Destination dest)throws SocketException{
 		super("ClientSession localPort="+endPoint.getLocalPort(),dest);
@@ -164,9 +164,9 @@ public class ClientSession extends UDTSession {
 		ConnectionHandshake handshake = new ConnectionHandshake();
 		handshake.setConnectionType(ConnectionHandshake.CONNECTION_TYPE_REGULAR);
 		handshake.setSocketType(ConnectionHandshake.SOCKET_TYPE_DGRAM);
-		long initialSequenceNo=SequenceNumber.random();
-		setInitialSequenceNumber(initialSequenceNo);
-		handshake.setInitialSeqNo(initialSequenceNo);
+		//long initialSequenceNo=SequenceNumber.random();
+		setInitialSequenceNumber(initialSequenceNumber);
+		handshake.setInitialSeqNo(initialSequenceNumber);
 		handshake.setPacketSize(getDatagramSize());
 		handshake.setSocketID(mySocketID);
 		handshake.setMaxFlowWndSize(flowWindowSize);
@@ -181,7 +181,7 @@ public class ClientSession extends UDTSession {
 		ConnectionHandshake handshake = new ConnectionHandshake();
 		handshake.setConnectionType(ConnectionHandshake.CONNECTION_TYPE_REGULAR);
 		handshake.setSocketType(ConnectionHandshake.SOCKET_TYPE_DGRAM);
-		handshake.setInitialSeqNo(initialSequenceNo);
+		handshake.setInitialSeqNo(initialSequenceNumber);
 		handshake.setPacketSize(getDatagramSize());
 		handshake.setSocketID(mySocketID);
 		handshake.setMaxFlowWndSize(flowWindowSize);

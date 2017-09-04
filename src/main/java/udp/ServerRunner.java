@@ -17,7 +17,9 @@ public class ServerRunner extends Thread {
         while (true) {
             try {
                 byte[] b = new byte[1376];
-                socket.getInputStream().read(b);
+                int len = socket.getInputStream().read(b);
+                //if(len>0)
+                //System.out.println(len);
             } catch (Exception e) {
             }
         }

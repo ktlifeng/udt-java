@@ -60,8 +60,10 @@ public class ReceiveBuffer {
 			//else compute insert position
 			int offset=(int)SequenceNumber.seqOffset(initialSequenceNumber, seq);
 			int insert=offset% size;
-			buffer[insert]=data;
-			numValidChunks.incrementAndGet();
+			if(buffer[insert]==null){
+                buffer[insert]=data;
+                numValidChunks.incrementAndGet();
+            }
 			notEmpty.signal();
 			return true;
 		}finally{

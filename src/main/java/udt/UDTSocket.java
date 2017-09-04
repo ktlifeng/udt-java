@@ -69,6 +69,7 @@ public class UDTSocket {
 		this.session=session;
 		this.receiver=new UDTReceiver(session,endpoint);
 		this.sender=new UDTSender(session,endpoint);
+		this.setActive(true);
 	}
 
 	public UDTReceiver getReceiver() {
@@ -170,7 +171,12 @@ public class UDTSocket {
 				ex.printStackTrace();
 			}
 		}
-		if(length>0)active=true;
+		//BUG FIX ,可能在上面阻塞，case
+        //发送端发送了一部分数据，服务端在ack定时器前收完了，然后因为没有包继续收，会卡在从socket读取报文，不会触发ack定时器（服务端bug）
+        //客户端因为服务器没发送ack，导致buffer满了，无法发送数据
+        //客户端无法发送数据时，会循环卡在上面的代码导致active=false
+        //客户端处理超时的逻辑，因为active=false无法执行，造成死循环（客户端等ack,服务端等数据包，都在等)
+		//if(length>0)active=true;
 	}
 
 	/**
