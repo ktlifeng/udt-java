@@ -32,6 +32,8 @@
 
 package udt.receiver;
 
+import java.util.Arrays;
+
 import udt.util.CircularArray;
 
 /**
@@ -39,61 +41,42 @@ import udt.util.CircularArray;
  */
 public class PacketHistoryWindow extends CircularArray<Long>{
 
-	private final long[]intervals;
-	private final int num;
-	
 	/**
 	 * create a new PacketHistoryWindow of the given size 
 	 * @param size
 	 */
 	public PacketHistoryWindow(int size){
 		super(size);
-		num=max-1;
-		intervals=new long[num];
 	}
 
 	/**
 	 * compute the packet arrival speed
 	 * (see specification section 6.2, page 12)
-	 * @return the current value
+	 * @return 1秒多少个包
 	 */
 	public long getPacketArrivalSpeed(){
-		if(!haveOverflow)return 0;
-		
-		double AI;
-		double medianPacketArrivalSpeed;
-		double total=0;
-		int count=0;
-		int pos=position-1;
-		if(pos<0)pos=num;
-		do{
-			long upper=circularArray.get(pos);
-			pos--;
-			if(pos<0)pos=num;
-			long lower=circularArray.get(pos);
-			long interval=upper-lower;
-			intervals[count]=interval;
-			total+=interval;
-			count++;
-		}while(count<num);
-		//compute median
-		AI=total / num;
-		//compute the actual value, filtering out intervals between AI/8 and AI*8
-		count=0;
-		total=0;
-		for(long l: intervals){
-			if(l>AI/8 && l<AI*8){
-				total+=l;
-				count++;
-			}
-		}
-		if(count>8){
-			medianPacketArrivalSpeed=1e6*count/total;
-		}
-		else{
-			medianPacketArrivalSpeed=0; 
-		}
-		return (long)Math.ceil(medianPacketArrivalSpeed);
+        int num=circularArray.size();
+        if(num<=0){
+            return 0;
+        }
+        Long[] temp= this.circularArray.toArray(new Long[]{});
+        Arrays.sort(temp);
+        double median=temp[temp.length/2];
+        //median filtering
+        double upper=median*8;
+        double lower=median/8;
+        double total = 0;
+        int count=0;
+        for(int i=0; i<num;i++){
+            double val=circularArray.get(i).doubleValue();
+            if(val<upper && val>lower){
+                total+=val;
+                count++;
+            }
+        }
+        double arriveAvgTime = total/count;
+        long arrivePacketSpeed = (long)(1000*1000 / arriveAvgTime);
+        return arrivePacketSpeed;
 	}
 
 }

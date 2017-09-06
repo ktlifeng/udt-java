@@ -14,17 +14,17 @@ public class UDTClient {
             client = new udt.UDTClient(InetAddress.getByName("localhost"));
             client.connect(server, 33001);
         }
-        //new Thread(new Runnable() {
-        //    public void run() {
-        //        while (true){
-        //            System.out.println("STATIS ===>{}"+client.getStatistics().toString());
-        //            try {
-        //                Thread.sleep(3000);
-        //            } catch (InterruptedException e) {
-        //            }
-        //        }
-        //    }
-        //}).start();
+        new Thread(new Runnable() {
+            public void run() {
+                while (true){
+                    System.out.println("STATIS ===>{}"+client.getStatistics().toString());
+                    try {
+                        Thread.sleep(3000);
+                    } catch (InterruptedException e) {
+                    }
+                }
+            }
+        }).start();
         byte[] b = new byte[1376*1376*20];
         new Random().nextBytes(b);
         while (true) {

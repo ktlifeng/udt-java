@@ -168,7 +168,7 @@ public class UDTReceiver {
 		ackHistoryWindow = new AckHistoryWindow(16);
 		packetHistoryWindow = new PacketHistoryWindow(16);
 		receiverLossList = new ReceiverLossList();
-		packetPairWindow = new PacketPairWindow(16);
+		packetPairWindow = new PacketPairWindow(64);
 		largestReceivedSeqNumber=session.getInitialSequenceNumber()-1;
 		bufferSize=session.getReceiveBufferSize();
 		handoffQueue=new ArrayBlockingQueue<UDTPacket>(4*session.getFlowWindowSize());
@@ -344,8 +344,10 @@ public class UDTReceiver {
 	 * process EXP event (see spec. p 13)
 	 */
 	protected void processEXPEvent()throws IOException{
-	    //TODO 检查socket alive在handshake后设置的active 状态
-		if(session.getSocket()==null || !session.getSocket().isActive())return;
+	    //FINISH 检查socket alive在handshake后设置的active 状态
+		if(session.getSocket()==null || !session.getSocket().isActive()){
+		    return;
+        }
 		UDTSender sender=session.getSocket().getSender();
 		//put all the unacknowledged packets in the senders loss list
 		sender.putUnacknowledgedPacketsIntoLossList();
@@ -378,14 +380,10 @@ public class UDTReceiver {
 				dataProcessTime.end();
 				dataPacketInterval.begin();
 			}
-		}
-
-		else if (p.getControlPacketType()==ControlPacketType.ACK2.ordinal()){
+		}else if (p.getControlPacketType()==ControlPacketType.ACK2.ordinal()){
 			Acknowledgment2 ack2=(Acknowledgment2)p;
 			onAck2PacketReceived(ack2);
-		}
-
-		else if (p instanceof Shutdown){
+		}else if (p instanceof Shutdown){
 			onShutdown();
 		}
 
@@ -400,17 +398,8 @@ public class UDTReceiver {
 	protected void onDataPacketReceived(DataPacket dp)throws IOException{
 		long currentSequenceNumber = dp.getPacketSequenceNumber();
 		
-		//for TESTING : check whether to drop this packet
-//		n++;
-//		//if(dropRate>0 && n % dropRate == 0){
-//			if(n % 1111 == 0){	
-//				logger.info("**** TESTING:::: DROPPING PACKET "+currentSequenceNumber+" FOR TESTING");
-//				return;
-//			}
-//		//}
 		boolean OK=session.getSocket().getInputStream().haveNewData(currentSequenceNumber,dp.getData());
 		if(!OK){
-			//need to drop packet...
 			return;
 		}
 		
@@ -419,13 +408,16 @@ public class UDTReceiver {
 		/*(4).if the seqNo of the current data packet is 16n+1,record the
 		time interval between this packet and the last data packet
 		in the packet pair window*/
+		if(lastDataPacketArrivalTime==0){
+            lastDataPacketArrivalTime = currentDataPacketArrivalTime;
+        }
+        long interval=currentDataPacketArrivalTime -lastDataPacketArrivalTime;
 		if((currentSequenceNumber%16)==1 && lastDataPacketArrivalTime>0){
-			long interval=currentDataPacketArrivalTime -lastDataPacketArrivalTime;
 			packetPairWindow.add(interval);
 		}
 		
 		//(5).record the packet arrival time in the PKT History Window.
-		packetHistoryWindow.add(currentDataPacketArrivalTime);
+		packetHistoryWindow.add(interval);
 
 		
 		//store current time
@@ -438,8 +430,7 @@ public class UDTReceiver {
 			into the receiver's loss list and send them to the sender in an NAK packet*/
 		if(SequenceNumber.compare(currentSequenceNumber,largestReceivedSeqNumber+1)>0){
 			sendNAK(currentSequenceNumber);
-		}
-		else if(SequenceNumber.compare(currentSequenceNumber,largestReceivedSeqNumber)<0){
+		}else if(SequenceNumber.compare(currentSequenceNumber,largestReceivedSeqNumber)<0){
 				/*(6.b).if the sequence number is less than LRSN,remove it from
 				 * the receiver's loss list
 				 */
@@ -506,8 +497,8 @@ public class UDTReceiver {
 		//set the packet arrival rate
 		packetArrivalSpeed=packetHistoryWindow.getPacketArrivalSpeed();
 		acknowledgmentPkt.setPacketReceiveRate(packetArrivalSpeed);
-
-		endpoint.doSend(acknowledgmentPkt);
+        System.out.println("ack==>"+ackNumber);
+        endpoint.doSend(acknowledgmentPkt);
 
 		statistics.incNumberOfACKSent();
 		statistics.setPacketArrivalRate(packetArrivalSpeed, estimateLinkCapacity);
@@ -545,14 +536,14 @@ public class UDTReceiver {
 	 */
 	protected void onAck2PacketReceived(Acknowledgment2 ack2){
 		AckHistoryEntry entry=ackHistoryWindow.getEntry(ack2.getAckSequenceNumber());
-		if(entry!=null){
+        if(entry!=null){
 			long ackNumber=entry.getAckNumber();
 			largestAcknowledgedAckNumber=Math.max(ackNumber, largestAcknowledgedAckNumber);
-			
+
 			long rtt=entry.getAge();
 			if(roundTripTime>0)roundTripTime = (roundTripTime*7 + rtt)/8;
 			else roundTripTime = rtt;
-			roundTripTimeVar = (roundTripTimeVar* 3 + Math.abs(roundTripTimeVar- rtt)) / 4;
+            roundTripTimeVar = (roundTripTimeVar* 3 + Math.abs(roundTripTimeVar- rtt)) / 4;
 			ackTimerInterval=4*roundTripTime+roundTripTimeVar+Util.getSYNTime();
 			nakTimerInterval=ackTimerInterval;
 			statistics.setRTT(roundTripTime, roundTripTimeVar);

@@ -32,22 +32,16 @@
 
 package udt.util;
 
-import java.util.ArrayList;
-import java.util.List;
+import com.sun.jmx.remote.internal.ArrayQueue;
 
 /**
  * Circular array: the most recent value overwrites the oldest one if there is no more free 
  * space in the array
  */
 public class CircularArray<T>{
-
-	protected int position=0;
-	
-	protected boolean haveOverflow=false;
-	
 	protected final int max;
 	
-	protected final List<T>circularArray;
+	protected final ArrayQueue<T> circularArray;
 	
 	/**
 	 * Create a new circularArray of the given size
@@ -56,22 +50,17 @@ public class CircularArray<T>{
 	 */
 	public CircularArray(int size){
 		max=size;
-		circularArray=new ArrayList<T>(size);	
+		circularArray=new ArrayQueue<T>(size);
 	}
 	
 	/**
 	 * add an entry
 	 */
 	public void add(T entry){
-		if(position>=max){
-			position=0;
-			haveOverflow=true;
+		if(circularArray.size()>=max){
+			circularArray.remove(0);
 		}
-		if(circularArray.size()>position){
-			circularArray.remove(position);
-		}
-		circularArray.add(position, entry);
-		position++;
+		circularArray.add(entry);
 	}
 	
 	/**
@@ -81,7 +70,8 @@ public class CircularArray<T>{
 		return circularArray.size();
 	}
 	
-	public String toString(){
+	@Override
+    public String toString(){
 		return circularArray.toString();
 	}
 

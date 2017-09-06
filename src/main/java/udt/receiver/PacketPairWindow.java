@@ -32,6 +32,8 @@
 
 package udt.receiver;
 
+import java.util.Arrays;
+
 import udt.util.CircularArray;
 
 /**
@@ -49,6 +51,9 @@ public class PacketPairWindow extends CircularArray<Long>{
 	 */
 	public PacketPairWindow(int size){
 		super(size);
+		for(int i=0;i<size;i++){
+		    this.add(1000*1000L); //单位是微秒，这里初始化为1秒
+        }
 	}
 	
 	/**
@@ -58,28 +63,26 @@ public class PacketPairWindow extends CircularArray<Long>{
 	 * @return time interval in microseconds
 	 */
 	public double computeMedianTimeInterval(){
-		int num=haveOverflow?max:Math.min(max, position);
-		double median=0;
-		for(int i=0; i<num;i++){
-			median+=circularArray.get(i).doubleValue();	
-		}
-		median=median/num;
-		
+		int num=circularArray.size();
+        if(num<=0){
+            return 0;
+        }
+        Long[] temp= this.circularArray.toArray(new Long[]{});
+        Arrays.sort(temp);
+        double median=temp[temp.length/2];
 		//median filtering
 		double upper=median*8;
 		double lower=median/8;
 		double total = 0;
-		double val=0;
 		int count=0;
 		for(int i=0; i<num;i++){
-			val=circularArray.get(i).doubleValue();
+            double val=circularArray.get(i).doubleValue();
 			if(val<upper && val>lower){
 				total+=val;
 				count++;
 			}
 		}
-		double res=total/count;
-		return res;
+		return total/count;
 	}
 	
 	/**
@@ -88,7 +91,8 @@ public class PacketPairWindow extends CircularArray<Long>{
 	 * @return number of packets per second
 	 */
 	public long getEstimatedLinkCapacity(){
-		long res=(long)Math.ceil(1000000/computeMedianTimeInterval());
+	    //1秒/包间隔时间，这里算出的是1秒发多少个包
+		long res=(long)Math.ceil(1000*1000/computeMedianTimeInterval());
 		return res;
 	}
 }

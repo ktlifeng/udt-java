@@ -313,7 +313,7 @@ public class UDTSender {
 		}
 		lastAckSequenceNumber=Math.max(lastAckSequenceNumber, ackNumber);		
 		//send ACK2 packet to the receiver
-		sendAck2(ackNumber);
+        sendAck2(ackNumber);
 		statistics.incNumberOfACKReceived();
 		if(storeStatistics)statistics.storeParameters();
 	}
@@ -360,36 +360,32 @@ public class UDTSender {
 	public void senderAlgorithm()throws InterruptedException, IOException{
 		while(!paused){
 			iterationStart=Util.getCurrentTime();
-			//if the sender's loss list is not empty 
-			Long entry=senderLossList.getFirstEntry();
-			if(entry!=null){
-				handleRetransmit(entry);
-			}
-			else
-			{
-				//if the number of unacknowledged data packets does not exceed the congestion 
-				//and the flow window sizes, pack a new packet
-				int unAcknowledged=unacknowledged.get();
-
-				if(unAcknowledged<session.getCongestionControl().getCongestionWindowSize()
-						&& unAcknowledged<session.getFlowWindowSize()){
-					//check for application data
-					DataPacket dp=flowWindow.consumeData();
-					if(dp!=null){
-						send(dp);
-						largestSentSequenceNumber=dp.getPacketSequenceNumber();
-					}
-					else{
-						statistics.incNumberOfMissingDataEvents();
-					}
-				}else{
-					//congestion window full, wait for an ack
-					if(unAcknowledged>=session.getCongestionControl().getCongestionWindowSize()){
-						statistics.incNumberOfCCWindowExceededEvents();
-					}
-					waitForAck();
-				}
-			}
+            int unAcknowledged = unacknowledged.get();
+            //if the sender's loss list is not empty
+            Long entry = senderLossList.getFirstEntry();
+            if (entry != null) {
+                handleRetransmit(entry);
+            } else {
+                //if the number of unacknowledged data packets does not exceed the congestion
+                //and the flow window sizes, pack a new packet
+                if (unAcknowledged < session.getCongestionControl().getCongestionWindowSize() &&
+                    unAcknowledged < session.getFlowWindowSize()) {
+                    //check for application data
+                    DataPacket dp = flowWindow.consumeData();
+                    if (dp != null) {
+                        send(dp);
+                        largestSentSequenceNumber = dp.getPacketSequenceNumber();
+                    } else {
+                        statistics.incNumberOfMissingDataEvents();
+                    }
+                }else {
+                    //congestion window full, wait for an ack
+                    if (unAcknowledged >= session.getCongestionControl().getCongestionWindowSize()) {
+                        statistics.incNumberOfCCWindowExceededEvents();
+                    }
+                    waitForAck();
+                }
+            }
 
 			//wait
 			if(largestSentSequenceNumber % 16 !=0){
@@ -409,8 +405,6 @@ public class UDTSender {
 		}
 	}
 
-	private final DataPacket retransmit=new DataPacket();
-	
 	/**
 	 * re-transmit an entry from the sender loss list
 	 * @param entry
@@ -420,6 +414,7 @@ public class UDTSender {
 			//retransmit the packet and remove it from  the list
 			byte[]data=sendBuffer.get(seqNumber);
 			if(data!=null){
+                DataPacket retransmit=new DataPacket();
 				retransmit.setPacketSequenceNumber(seqNumber);
 				retransmit.setSession(session);
 				retransmit.setDestinationID(session.getDestination().getSocketID());

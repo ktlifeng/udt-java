@@ -29,11 +29,13 @@ public class UDTCongestionControl implements CongestionControl {
 	//link capacity in packets per second
 	protected long estimatedLinkCapacity=0;
 
-	// Packet sending period = packet send interval, in microseconds
-	protected double packetSendingPeriod=1;              
+    /**
+     * Packet sending period = packet send interval, in microseconds
+     */
+	protected double packetSendingPeriod=0;
 
 	// Congestion window size, in packets
-	protected double congestionWindowSize=16;
+	protected double congestionWindowSize=2;
 
 	/*if in slow start phase*/
 	private boolean slowStartPhase=true;
@@ -87,10 +89,16 @@ public class UDTCongestionControl implements CongestionControl {
 	 */
 	public void updatePacketArrivalRate(long rate, long linkCapacity){
 		//see spec p. 14.
-		if(packetArrivalRate>0)packetArrivalRate=(packetArrivalRate*7+rate)/8;
-		else packetArrivalRate=rate;
-		if(estimatedLinkCapacity>0)estimatedLinkCapacity=(estimatedLinkCapacity*7+linkCapacity)/8;
-		else estimatedLinkCapacity=linkCapacity;
+		if(packetArrivalRate>0){
+		    packetArrivalRate=(packetArrivalRate*7+rate)/8;
+        }else {
+		    packetArrivalRate=rate;
+        }
+		if(estimatedLinkCapacity>0){
+		    estimatedLinkCapacity=(estimatedLinkCapacity*7+linkCapacity)/8;
+        }else{
+		    estimatedLinkCapacity=linkCapacity;
+        }
 	}
 
 	public long getPacketArrivalRate() {
@@ -138,25 +146,29 @@ public class UDTCongestionControl implements CongestionControl {
 			if(congestionWindowSize>session.getFlowWindowSize()){
 				slowStartPhase=false;
 				if(packetArrivalRate>0){
-					packetSendingPeriod=1000000.0/packetArrivalRate;
+					packetSendingPeriod=1000000.0/packetArrivalRate;//微秒   packetArrivalRate=1秒多少个包
 				}
-				else{
-					packetSendingPeriod=(double)congestionWindowSize/(roundTripTime+Util.getSYNTimeD());
-				}
+				//else{
+				//	packetSendingPeriod=(double)congestionWindowSize/(roundTripTime+Util.getSYNTimeD());
+				//}
 			}
 
 		}else{
 			//1.if it is  not in slow start phase,set the congestion window size 
 			//to the product of packet arrival rate and(rtt +SYN)
-			double A=packetArrivalRate/1000000.0*(roundTripTime+Util.getSYNTimeD());
-			congestionWindowSize=(long)A+16;
-			if(logger.isLoggable(Level.FINER)){
-				logger.finer("receive rate "+packetArrivalRate+" rtt "+roundTripTime+" set to window size: "+(A+16));
-			}
+            if(packetArrivalRate>0){
+    			double A=packetArrivalRate/1000000.0*(roundTripTime+Util.getSYNTimeD());
+			    congestionWindowSize=(congestionWindowSize*7+A)/8;
+                if(logger.isLoggable(Level.FINER)){
+                    logger.finer("receive rate "+packetArrivalRate+" rtt "+roundTripTime+" set to window size: "+(A+16));
+                }
+            }
 		}
 
 		//no rate increase during slow start
-		if(slowStartPhase)return;
+		if(slowStartPhase){
+		    return;
+        }
 
 		//no rate increase "immediately" after a NAK
 		if(loss){
@@ -167,10 +179,8 @@ public class UDTCongestionControl implements CongestionControl {
 		//4. compute the increase in sent packets for the next SYN period
 		double numOfIncreasingPacket=computeNumOfIncreasingPacket();
 
-		//5. update the send period
-		double factor=Util.getSYNTimeD()/(packetSendingPeriod*numOfIncreasingPacket+Util.getSYNTimeD());
-		packetSendingPeriod=factor*packetSendingPeriod;
-		//packetSendingPeriod=0.995*packetSendingPeriod;
+		//5. update the send period   SND = (SND * SYN) / (SND * inc + SYN).
+		packetSendingPeriod=(Util.getSYNTimeD()*packetSendingPeriod)/(packetSendingPeriod*numOfIncreasingPacket+Util.getSYNTimeD());
 
 		statistics.setSendPeriod(packetSendingPeriod);
 	}
@@ -185,8 +195,7 @@ public class UDTCongestionControl implements CongestionControl {
 
 		if(remaining<=0){
 			return 1.0/UDPEndPoint.DATAGRAM_SIZE;
-		}
-		else{
+		}else{
 			double exp=Math.ceil(Math.log10(remaining*PS*8));
 			double power10 = Math.pow( 10.0, exp)* BetaDivPS;
 			return Math.max(power10, 1/PS);

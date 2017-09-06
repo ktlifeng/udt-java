@@ -32,6 +32,7 @@
 
 package udt;
 import java.io.IOException;
+import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
@@ -43,7 +44,7 @@ import java.util.concurrent.TimeUnit;
  * TODO is it possible to actually extend java.net.Socket ?
  * 
  */
-public class UDTSocket {
+public class UDTSocket extends Socket{
 
 	//endpoint
 	private final UDPEndPoint endpoint;
@@ -104,7 +105,8 @@ public class UDTSocket {
 	 * get the input stream for reading from this socket
 	 * @return
 	 */
-	public synchronized UDTInputStream getInputStream()throws IOException{
+	@Override
+    public synchronized UDTInputStream getInputStream()throws IOException{
 		if(inputStream==null){
 			inputStream=new UDTInputStream(this);
 		}
@@ -115,7 +117,8 @@ public class UDTSocket {
 	 * get the output stream for writing to this socket
 	 * @return
 	 */
-	public synchronized UDTOutputStream getOutputStream(){
+	@Override
+    public synchronized UDTOutputStream getOutputStream(){
 		if(outputStream==null){
 			outputStream=new UDTOutputStream(this);
 		}
@@ -184,9 +187,13 @@ public class UDTSocket {
 	 * and acknowledged
 	 */
 	protected void flush() throws InterruptedException{
-		if(!active)return;
+		if(!active){
+		    return;
+        }
 		final long seqNo=sender.getCurrentSequenceNumber();
-		if(seqNo<0)throw new IllegalStateException();
+		if(seqNo<0){
+		    throw new IllegalStateException();
+        }
 		while(!sender.isSentOut(seqNo)){
 			Thread.sleep(5);
 		}
@@ -210,9 +217,14 @@ public class UDTSocket {
 	 * close the connection
 	 * @throws IOException
 	 */
-	public void close()throws IOException{
-		if(inputStream!=null)inputStream.close();
-		if(outputStream!=null)outputStream.close();
+	@Override
+    public void close()throws IOException{
+		if(inputStream!=null){
+		    inputStream.close();
+        }
+		if(outputStream!=null){
+		    outputStream.close();
+        }
 		active=false;
 	}
 
