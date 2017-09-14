@@ -74,9 +74,13 @@ public class PacketHistoryWindow extends CircularArray<Long>{
                 count++;
             }
         }
-        double arriveAvgTime = total/count;
-        long arrivePacketSpeed = (long)(1000*1000 / arriveAvgTime);
-        return arrivePacketSpeed;
+        if(count>=8){
+            double arriveAvgTime = total/count;
+            long arrivePacketSpeed = (long)(1000*1000 / arriveAvgTime);
+            return arrivePacketSpeed;
+        }else{
+            return 0;
+        }
 	}
 
 }

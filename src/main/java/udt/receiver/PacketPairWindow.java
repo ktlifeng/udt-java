@@ -70,19 +70,19 @@ public class PacketPairWindow extends CircularArray<Long>{
         Long[] temp= this.circularArray.toArray(new Long[]{});
         Arrays.sort(temp);
         double median=temp[temp.length/2];
-		//median filtering
-		double upper=median*8;
-		double lower=median/8;
-		double total = 0;
-		int count=0;
-		for(int i=0; i<num;i++){
-            double val=circularArray.get(i).doubleValue();
-			if(val<upper && val>lower){
-				total+=val;
-				count++;
-			}
-		}
-		return total/count;
+        //double upper=median*8;
+		//double lower=median/8;
+		//double total = 0;
+		//int count=0;
+		//for(int i=0; i<num;i++){
+         //   double val=circularArray.get(i).doubleValue();
+		//	if(val<upper && val>lower){
+		//		total+=val;
+		//		count++;
+		//	}
+		//}
+		//return total/count;
+        return median;
 	}
 	
 	/**
@@ -92,7 +92,8 @@ public class PacketPairWindow extends CircularArray<Long>{
 	 */
 	public long getEstimatedLinkCapacity(){
 	    //1秒/包间隔时间，这里算出的是1秒发多少个包
-		long res=(long)Math.ceil(1000*1000/computeMedianTimeInterval());
+        double timev = computeMedianTimeInterval();
+		long res=(long)Math.ceil(1000*1000/timev);
 		return res;
 	}
 }

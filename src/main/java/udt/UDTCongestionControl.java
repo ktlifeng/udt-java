@@ -35,7 +35,7 @@ public class UDTCongestionControl implements CongestionControl {
 	protected double packetSendingPeriod=0;
 
 	// Congestion window size, in packets
-	protected double congestionWindowSize=2;
+	protected double congestionWindowSize=16;
 
 	/*if in slow start phase*/
 	private boolean slowStartPhase=true;
@@ -158,7 +158,7 @@ public class UDTCongestionControl implements CongestionControl {
 			//to the product of packet arrival rate and(rtt +SYN)
             if(packetArrivalRate>0){
     			double A=packetArrivalRate/1000000.0*(roundTripTime+Util.getSYNTimeD());
-			    congestionWindowSize=(congestionWindowSize*7+A)/8;
+			    congestionWindowSize=A+16;
                 if(logger.isLoggable(Level.FINER)){
                     logger.finer("receive rate "+packetArrivalRate+" rtt "+roundTripTime+" set to window size: "+(A+16));
                 }
@@ -185,8 +185,8 @@ public class UDTCongestionControl implements CongestionControl {
 		statistics.setSendPeriod(packetSendingPeriod);
 	}
 
-	private final long PS=UDPEndPoint.DATAGRAM_SIZE;
-	private final double BetaDivPS=0.0000015/PS;
+	private final long MSS =UDPEndPoint.DATAGRAM_SIZE;
+	private final double BetaDivPS=0.0000015/ MSS;
 
 	//see spec page 16
 	private double computeNumOfIncreasingPacket (){
@@ -194,11 +194,12 @@ public class UDTCongestionControl implements CongestionControl {
 		double remaining=estimatedLinkCapacity-1000000.0/packetSendingPeriod;
 
 		if(remaining<=0){
-			return 1.0/UDPEndPoint.DATAGRAM_SIZE;
+			return 1.0/UDPEndPoint.DATAGRAM_SIZE; //比10小 则减速 比10大 则加速
 		}else{
-			double exp=Math.ceil(Math.log10(remaining*PS*8));
+            //max(10^(ceil(log10((B-C)*MSS*8))) * Beta/MSS, 1/MSS)
+			double exp=Math.ceil(Math.log10(remaining* MSS *8));
 			double power10 = Math.pow( 10.0, exp)* BetaDivPS;
-			return Math.max(power10, 1/PS);
+			return Math.max(power10, 1/ MSS);
 		}
 	}
 
@@ -229,7 +230,7 @@ public class UDTCongestionControl implements CongestionControl {
 			packetSendingPeriod = Math.ceil(packetSendingPeriod*1.125);
 			// -Update AvgNAKNum(the average number of NAKs per congestion)
 			averageNACKNum = (int)Math.ceil(averageNACKNum*0.875 + nACKCount*0.125);
-			// -reset NAKCount and DecCount to 1, 
+			// -reset NAKCount and DecCount to 1,
 			nACKCount=1;
 			decCount=1;
 			/* - compute DecRandom to a random (average distribution) number between 1 and AvgNAKNum */
@@ -238,11 +239,11 @@ public class UDTCongestionControl implements CongestionControl {
 			lastDecreaseSeqNo = currentMaxSequenceNumber;
 			// -Stop.
 		}
-		//* 3) If DecCount <= 5, and NAKCount == DecCount * DecRandom: 
+		//* 3) If DecCount <= 5, and NAKCount == DecCount * DecRandom:
 		else if(decCount<=5 && nACKCount==decCount*decreaseRandom){
-			// a. Update SND period: SND = SND * 1.125; 
+			// a. Update SND period: SND = SND * 1.125;
 			packetSendingPeriod = Math.ceil(packetSendingPeriod*1.125);
-			// b. Increase DecCount by 1; 
+			// b. Increase DecCount by 1;
 			decCount++;
 			// c. Record the current largest sent sequence number (LastDecSeq).
 			lastDecreaseSeqNo= currentMaxSequenceNumber;

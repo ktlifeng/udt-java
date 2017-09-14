@@ -35,6 +35,7 @@ package udt;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -49,6 +50,7 @@ import udt.packets.Acknowledgment2;
 import udt.packets.DataPacket;
 import udt.packets.KeepAlive;
 import udt.packets.NegativeAcknowledgement;
+import udt.packets.SendBufferPackets;
 import udt.sender.FlowWindow;
 import udt.sender.SenderLossList;
 import udt.util.MeanThroughput;
@@ -79,9 +81,10 @@ public class UDTSender {
 	private final SenderLossList senderLossList;
 
 	//sendBuffer stores the sent data packets and their sequence numbers
-	private final Map<Long,byte[]>sendBuffer;
+	private final Map<Long,SendBufferPackets>sendBuffer;
 
-	private final FlowWindow flowWindow;
+	//private final FlowWindow flowWindow;
+    private final ArrayBlockingQueue<DataPacket> flowWindow;
 
 	//thread reading packets from send queue and sending them
 	private Thread senderThread;
@@ -124,9 +127,10 @@ public class UDTSender {
 		this.session=session;
 		statistics=session.getStatistics();
 		senderLossList=new SenderLossList();
-		sendBuffer=new ConcurrentHashMap<Long, byte[]>(session.getFlowWindowSize(),0.75f,2); 
+		sendBuffer=new ConcurrentHashMap<Long, SendBufferPackets>(session.getFlowWindowSize(),0.75f,2);
 		chunksize=session.getDatagramSize()-24;//need space for the header;
-		flowWindow=new FlowWindow(session.getFlowWindowSize(),chunksize);
+		//flowWindow=new FlowWindow(session.getFlowWindowSize(),chunksize);
+        flowWindow = new ArrayBlockingQueue(session.getFlowWindowSize());
 		lastAckSequenceNumber=session.getInitialSequenceNumber();
 		currentSequenceNumber=session.getInitialSequenceNumber()-1;
 		storeStatistics=Boolean.getBoolean("udt.sender.storeStatistics");
@@ -204,7 +208,7 @@ public class UDTSender {
 			int l=p.getLength();
 			byte[]data=new byte[l];
 			System.arraycopy(p.getData(), 0, data, 0, l);
-			sendBuffer.put(p.getPacketSequenceNumber(), data);
+			sendBuffer.put(p.getPacketSequenceNumber(), new SendBufferPackets(data));
 			unacknowledged.incrementAndGet();
 		}
 		statistics.incNumberOfSentDataPackets();
@@ -212,23 +216,25 @@ public class UDTSender {
 
 	protected void sendUdtPacket(ByteBuffer bb, int timeout, TimeUnit units)throws IOException, InterruptedException{
 		if(!started)start();
-		DataPacket packet=null;
-		do{
-			packet=flowWindow.getForProducer();
-			if(packet==null){
-				Thread.sleep(10);
-			}
-		}while(packet==null);//TODO check timeout...
+		DataPacket packet=new DataPacket();
+		//do{
+		//	packet=flowWindow.getForProducer();
+		//	if(packet==null){
+		//		Thread.sleep(10);
+		//	}
+		//}while(packet==null);//TODO check timeout...
 		try{
 			packet.setPacketSequenceNumber(getNextSequenceNumber());
 			packet.setSession(session);
 			packet.setDestinationID(session.getDestination().getSocketID());
 			int len=Math.min(bb.remaining(),chunksize);
-			byte[] data=packet.getData();
+			byte[] data=new byte[chunksize];
 			bb.get(data,0,len);
 			packet.setLength(len);
+			packet.setData(data);
 		}finally{
-			flowWindow.produce();
+			//flowWindow.produce();
+		    flowWindow.put(packet);
 		}
 
 	}
@@ -243,25 +249,25 @@ public class UDTSender {
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	protected void sendUdtPacket(byte[]data, int timeout, TimeUnit units)throws IOException, InterruptedException{
-		if(!started)start();
-		DataPacket packet=null;
-		do{
-			packet=flowWindow.getForProducer();
-			if(packet==null){
-				Thread.sleep(10);
-				//	System.out.println("queue full: "+flowWindow);
-			}
-		}while(packet==null);
-		try{
-			packet.setPacketSequenceNumber(getNextSequenceNumber());
-			packet.setSession(session);
-			packet.setDestinationID(session.getDestination().getSocketID());
-			packet.setData(data);
-		}finally{
-			flowWindow.produce();
-		}
-	}
+	//protected void sendUdtPacket(byte[]data, int timeout, TimeUnit units)throws IOException, InterruptedException{
+	//	if(!started)start();
+	//	DataPacket packet=null;
+	//	do{
+	//		packet=flowWindow.getForProducer();
+	//		if(packet==null){
+	//			Thread.sleep(10);
+	//			//	System.out.println("queue full: "+flowWindow);
+	//		}
+	//	}while(packet==null);
+	//	try{
+	//		packet.setPacketSequenceNumber(getNextSequenceNumber());
+	//		packet.setSession(session);
+	//		packet.setDestinationID(session.getDestination().getSocketID());
+	//		packet.setData(data);
+	//	}finally{
+	//		flowWindow.produce();
+	//	}
+	//}
 
 	//receive a packet from server from the peer
 	protected void receive(UDTPacket p)throws IOException{
@@ -371,7 +377,7 @@ public class UDTSender {
                 if (unAcknowledged < session.getCongestionControl().getCongestionWindowSize() &&
                     unAcknowledged < session.getFlowWindowSize()) {
                     //check for application data
-                    DataPacket dp = flowWindow.consumeData();
+                    DataPacket dp = flowWindow.poll();
                     if (dp != null) {
                         send(dp);
                         largestSentSequenceNumber = dp.getPacketSequenceNumber();
@@ -387,8 +393,7 @@ public class UDTSender {
                 }
             }
 
-			//wait
-			if(largestSentSequenceNumber % 16 !=0){
+            if(largestSentSequenceNumber % 16 !=0){
 				long snd=(long)session.getCongestionControl().getSendInterval();
 				long passed=Util.getCurrentTime()-iterationStart;
 				int x=0;
@@ -412,8 +417,9 @@ public class UDTSender {
 	protected void handleRetransmit(Long seqNumber){
 		try {
 			//retransmit the packet and remove it from  the list
-			byte[]data=sendBuffer.get(seqNumber);
-			if(data!=null){
+			SendBufferPackets packets =sendBuffer.get(seqNumber);
+			if(packets!=null){
+                byte[]data = packets.getData();
                 DataPacket retransmit=new DataPacket();
 				retransmit.setPacketSequenceNumber(seqNumber);
 				retransmit.setSession(session);
@@ -430,10 +436,13 @@ public class UDTSender {
 	/**
 	 * for processing EXP event (see spec. p 13)
 	 */
-	protected void putUnacknowledgedPacketsIntoLossList(){
+	protected void putUnacknowledgedPacketsIntoLossList(long time){
 		synchronized (sendLock) {
 			for(Long l: sendBuffer.keySet()){
-				senderLossList.insert(l);
+				//判断时间
+                if(Util.getCurrentTime()-sendBuffer.get(l).getTime()>time){
+			        senderLossList.insert(l);
+                }
 			}
 		}
 	}

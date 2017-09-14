@@ -244,22 +244,22 @@ public class UDTReceiver {
 		//check ACK timer
 		long currentTime=Util.getCurrentTime();
 		if(nextACK<currentTime){
-			nextACK=currentTime+ackTimerInterval;
 			processACKEvent(true);
+			nextACK=currentTime+ackTimerInterval;
 		}
 		//check NAK timer
 		if(nextNAK<currentTime){
-			nextNAK=currentTime+nakTimerInterval;
 			processNAKEvent();
+			nextNAK=currentTime+nakTimerInterval;
 		}
 
 		//check EXP timer
 		if(nextEXP<currentTime){
-			nextEXP=currentTime+expTimerInterval;
 			processEXPEvent();
+			nextEXP=currentTime+expTimerInterval;
 		}
 		//perform time-bounded UDP receive
-        //TODO 检查为什么没拿走
+
 		UDTPacket packet=handoffQueue.poll(Util.getSYNTime(), TimeUnit.MICROSECONDS);
         if(packet!=null){
 			//reset exp count to 1
@@ -349,8 +349,11 @@ public class UDTReceiver {
 		    return;
         }
 		UDTSender sender=session.getSocket().getSender();
+		if(sender.haveLostPackets()){
+		   return;
+        }
 		//put all the unacknowledged packets in the senders loss list
-		sender.putUnacknowledgedPacketsIntoLossList();
+		sender.putUnacknowledgedPacketsIntoLossList(this.expTimerInterval);
 		//TODO 假如(exp-count>16)并且自上次从对方接收到一个包以来的总时间超过3秒，或这个时间已超过3分钟了，这被认为是连接已断开，关闭UDT连接。
 		if(expCount>16 && System.currentTimeMillis()-sessionUpSince > IDLE_TIMEOUT){
 			if(!connectionExpiryDisabled &&!stopped){
@@ -364,6 +367,8 @@ public class UDTReceiver {
 			sendKeepAlive();
 		}
 		expCount++;
+		//exp-count * (RTT + 4 * RTTVar)
+		expTimerInterval = expCount*(roundTripTime+4*roundTripTimeVar)+Util.getSYNTime();
 	}
 
 	protected void processUDTPacket(UDTPacket p)throws IOException{
@@ -412,7 +417,8 @@ public class UDTReceiver {
             lastDataPacketArrivalTime = currentDataPacketArrivalTime;
         }
         long interval=currentDataPacketArrivalTime -lastDataPacketArrivalTime;
-		if((currentSequenceNumber%16)==1 && lastDataPacketArrivalTime>0){
+		//第16个包不受SND限制
+        if((currentSequenceNumber%16)==1 && lastDataPacketArrivalTime>0){
 			packetPairWindow.add(interval);
 		}
 		
@@ -428,9 +434,9 @@ public class UDTReceiver {
 		/*(6.a).if the number of the current data packet is greater than LSRN+1,
 			put all the sequence numbers between (but excluding) these two values
 			into the receiver's loss list and send them to the sender in an NAK packet*/
-		if(SequenceNumber.compare(currentSequenceNumber,largestReceivedSeqNumber+1)>0){
-			sendNAK(currentSequenceNumber);
-		}else if(SequenceNumber.compare(currentSequenceNumber,largestReceivedSeqNumber)<0){
+		if(currentSequenceNumber>largestReceivedSeqNumber+1){
+            sendNAK(currentSequenceNumber);
+		}else if(currentSequenceNumber<largestReceivedSeqNumber){
 				/*(6.b).if the sequence number is less than LRSN,remove it from
 				 * the receiver's loss list
 				 */
@@ -440,7 +446,7 @@ public class UDTReceiver {
 		statistics.incNumberOfReceivedDataPackets();
 
 		//(7).Update the LRSN
-		if(SequenceNumber.compare(currentSequenceNumber,largestReceivedSeqNumber)>0){
+		if(currentSequenceNumber>largestReceivedSeqNumber){
 			largestReceivedSeqNumber=currentSequenceNumber;
 		}
 
@@ -497,7 +503,7 @@ public class UDTReceiver {
 		//set the packet arrival rate
 		packetArrivalSpeed=packetHistoryWindow.getPacketArrivalSpeed();
 		acknowledgmentPkt.setPacketReceiveRate(packetArrivalSpeed);
-        System.out.println("ack==>"+ackNumber);
+
         endpoint.doSend(acknowledgmentPkt);
 
 		statistics.incNumberOfACKSent();
@@ -546,7 +552,7 @@ public class UDTReceiver {
             roundTripTimeVar = (roundTripTimeVar* 3 + Math.abs(roundTripTimeVar- rtt)) / 4;
 			ackTimerInterval=4*roundTripTime+roundTripTimeVar+Util.getSYNTime();
 			nakTimerInterval=ackTimerInterval;
-			statistics.setRTT(roundTripTime, roundTripTimeVar);
+            statistics.setRTT(roundTripTime, roundTripTimeVar);
 		}
 	}
 
