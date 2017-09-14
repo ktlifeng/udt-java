@@ -130,7 +130,7 @@ public class UDTReceiver {
 	private long expTimerInterval=100*Util.getSYNTime();
 
 	//instant when the session was created (for expiry checking)
-	private final long sessionUpSince;
+	private long sessionUpSince;
 	//milliseconds to timeout a new session that stays idle
 	private final long IDLE_TIMEOUT = 3*60*1000;
 
@@ -264,7 +264,7 @@ public class UDTReceiver {
         if(packet!=null){
 			//reset exp count to 1
 			expCount=1;
-			//If there is no unacknowledged data packet, or if this is an 
+			//If there is no unacknowledged data packet, or if this is an
 			//ACK or NAK control packet, reset the EXP timer.
 			boolean needEXPReset=false;
 			if(packet.isControlPacket()){
@@ -579,6 +579,7 @@ public class UDTReceiver {
 
 	protected void resetEXPCount(){
 		expCount=0;
+		sessionUpSince = System.currentTimeMillis();
 	}
 	
 	public void setAckInterval(long ackInterval){
