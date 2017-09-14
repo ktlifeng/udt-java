@@ -1,6 +1,39 @@
 修复了UDT-JAVA 0.7版本的一些BUG
 在根据论文的实现进行具体实现的梳理
 
-目前存在的问题：
-在1000m带宽的情况下，能保持稳定运行，但是SND变化较慢，传输速度最大值不理想。
+持续梳理中
 
+测试数据：
+环境：网卡 1000mb/s，内部网络
+
+05:29:16 PM     IFACE   rxpck/s   txpck/s   rxbyt/s   txbyt/s   rxcmp/s   txcmp/s  rxmcst/s
+05:29:17 PM        lo    173.86    173.86  68755.68  68755.68      0.00      0.00      0.00
+05:29:17 PM      eth0  51597.73    254.55 73069371.59  63045.45      0.00      0.00      0.00
+
+05:29:17 PM     IFACE   rxpck/s   txpck/s   rxbyt/s   txbyt/s   rxcmp/s   txcmp/s  rxmcst/s
+05:29:18 PM        lo     19.51     19.51  14906.10  14906.10      0.00      0.00      0.00
+05:29:18 PM      eth0  59482.93    273.17 84210196.34  59697.56      0.00      0.00      0.00
+
+05:29:18 PM     IFACE   rxpck/s   txpck/s   rxbyt/s   txbyt/s   rxcmp/s   txcmp/s  rxmcst/s
+05:29:19 PM        lo     31.03     31.03  18783.91  18783.91      0.00      0.00      0.00
+05:29:19 PM      eth0  54005.75    264.37 76475618.39  35616.09      0.00      0.00      0.00
+
+05:29:19 PM     IFACE   rxpck/s   txpck/s   rxbyt/s   txbyt/s   rxcmp/s   txcmp/s  rxmcst/s
+05:29:20 PM        lo      6.98      6.98   4777.91   4777.91      0.00      0.00      0.00
+05:29:20 PM      eth0  51415.12    330.23 72786872.09  50976.74      0.00      0.00      0.00
+
+05:29:20 PM     IFACE   rxpck/s   txpck/s   rxbyt/s   txbyt/s   rxcmp/s   txcmp/s  rxmcst/s
+05:29:21 PM        lo     30.23     30.23  23624.42  23624.42      0.00      0.00      0.00
+05:29:21 PM      eth0  54900.00    227.91 77732222.09  47184.88      0.00      0.00      0.00
+
+05:29:21 PM     IFACE   rxpck/s   txpck/s   rxbyt/s   txbyt/s   rxcmp/s   txcmp/s  rxmcst/s
+05:29:22 PM        lo     49.45     49.45  23998.90  23998.90      0.00      0.00      0.00
+05:29:22 PM      eth0  48670.33    416.48 68897024.18  76765.93      0.00      0.00      0.00
+
+05:29:22 PM     IFACE   rxpck/s   txpck/s   rxbyt/s   txbyt/s   rxcmp/s   txcmp/s  rxmcst/s
+05:29:23 PM        lo     19.54     19.54  14086.21  14086.21      0.00      0.00      0.00
+05:29:23 PM      eth0  56724.14    206.90 80308718.39  56021.84      0.00      0.00      0.00
+
+05:29:23 PM     IFACE   rxpck/s   txpck/s   rxbyt/s   txbyt/s   rxcmp/s   txcmp/s  rxmcst/s
+05:29:24 PM        lo     18.18     18.18  13889.77  13889.77      0.00      0.00      0.00
+05:29:24 PM      eth0  55352.27    345.45 78366668.18  51218.18      0.00      0.00      0.00
