@@ -579,8 +579,11 @@ public class UDTReceiver {
 
 	protected void resetEXPCount(){
 		expCount=0;
-		sessionUpSince = System.currentTimeMillis();
 	}
+
+	public void refresh(){
+		sessionUpSince = System.currentTimeMillis();
+    }
 	
 	public void setAckInterval(long ackInterval){
 		this.ackInterval=ackInterval;

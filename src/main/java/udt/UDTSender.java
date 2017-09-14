@@ -271,6 +271,7 @@ public class UDTSender {
 
 	//receive a packet from server from the peer
 	protected void receive(UDTPacket p)throws IOException{
+	    session.getSocket().getReceiver().refresh();
 		if (p instanceof Acknowledgement) {
 			Acknowledgement acknowledgement=(Acknowledgement)p;
 			onAcknowledge(acknowledgement);
